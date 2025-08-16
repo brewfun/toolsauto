@@ -213,7 +213,7 @@ EOF"""),
         steps = [
             ("Pull container images", "kubeadm config images pull"),
             ("Khởi tạo cluster", 
-             f"kubeadm init --pod-network-cidr={self.pod_cidr} --skip-phases=addon/kube-proxy"),
+             f"kubeadm init --pod-network-cidr={self.pod_cidr}"),
         ]
 
         for description, command in steps:
