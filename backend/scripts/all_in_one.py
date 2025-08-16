@@ -13,20 +13,20 @@ def configure_system():
     logger.info("Bắt đầu cấu hình hệ thống cho Kubernetes...")
 
     # Tắt swap
-    success, output = run_command("sudo swapoff -a")
+    success, output = run_command(" swapoff -a")
     if not success:
         logger.error("Lỗi khi tắt swap: %s", output)
         return False
     
     # Vô hiệu hóa swap trong /etc/fstab
-    success, output = run_command("sudo sed -i '/ swap / s/^/#/' /etc/fstab")
+    success, output = run_command(" sed -i '/ swap / s/^/#/' /etc/fstab")
     if not success:
         logger.error("Lỗi khi cập nhật /etc/fstab: %s", output)
         return False
 
     # Thêm kernel modules
     success, output = run_command(
-        "sudo tee /etc/modules-load.d/k8s.conf <<EOF\noverlay\nbr_netfilter\nEOF"
+        " tee /etc/modules-load.d/k8s.conf <<EOF\noverlay\nbr_netfilter\nEOF"
     )
     if not success:
         logger.error("Lỗi khi thêm kernel modules: %s", output)
@@ -34,21 +34,21 @@ def configure_system():
 
     # Nạp kernel modules
     for module in ["overlay", "br_netfilter"]:
-        success, output = run_command(f"sudo modprobe {module}")
+        success, output = run_command(f" modprobe {module}")
         if not success:
             logger.error("Lỗi khi nạp module %s: %s", module, output)
             return False
 
     # Thiết lập sysctl params
     success, output = run_command(
-        "sudo tee /etc/sysctl.d/k8s.conf <<EOF\nnet.bridge.bridge-nf-call-iptables=1\nnet.bridge.bridge-nf-call-ip6tables=1\nnet.ipv4.ip_forward=1\nEOF"
+        " tee /etc/sysctl.d/k8s.conf <<EOF\nnet.bridge.bridge-nf-call-iptables=1\nnet.bridge.bridge-nf-call-ip6tables=1\nnet.ipv4.ip_forward=1\nEOF"
     )
     if not success:
         logger.error("Lỗi khi thiết lập sysctl params: %s", output)
         return False
 
     # Áp dụng sysctl params mà không cần reboot
-    success, output = run_command("sudo sysctl --system")
+    success, output = run_command(" sysctl --system")
     if not success:
         logger.error("Lỗi khi áp dụng sysctl params: %s", output)
         return False
@@ -69,46 +69,41 @@ def install_containerd():
         return True
 
     # Cập nhật package index
-    success, output = run_command("sudo apt-get update")
+    success, output = run_command(" apt-get update")
     if not success:
         logger.error("Lỗi khi chạy apt-get update: %s", output)
         return False
 
     # Cài đặt dependencies
     success, output = run_command(
-        "sudo apt-get install -y apt-transport-https ca-certificates curl gpg"
+        " apt-get install -y apt-transport-https ca-certificates curl gpg"
     )
     if not success:
         logger.error("Lỗi khi cài dependencies: %s", output)
         return False
 
     # Cài đặt containerd
-    success, output = run_command("sudo apt-get install -y containerd")
+    success, output = run_command(" apt-get install -y containerd")
     if not success:
         logger.error("Lỗi khi cài containerd: %s", output)
         return False
 
     # Tạo cấu hình containerd
-    success, output = run_command("sudo mkdir -p /etc/containerd && containerd config default | sudo tee /etc/containerd/config.toml")
+    success, output = run_command(" mkdir -p /etc/containerd && containerd config default |  tee /etc/containerd/config.toml")
     if not success:
         logger.error("Lỗi khi tạo cấu hình containerd: %s", output)
         return False
 
     # Bật SystemdCgroup
-    success, output = run_command("sudo sed -i 's/ SystemdCgroup = false/ SystemdCgroup = true/' /etc/containerd/config.toml")
+    success, output = run_command(" sed -i 's/ SystemdCgroup = false/ SystemdCgroup = true/' /etc/containerd/config.toml")
     if not success:
         logger.error("Lỗi khi bật SystemdCgroup: %s", output)
         return False
 
-    # Khởi động lại containerd và kubelet
-    success, output = run_command("sudo systemctl restart containerd.service")
+    # Khởi động lại containerd
+    success, output = run_command(" systemctl restart containerd.service")
     if not success:
         logger.error("Lỗi khi khởi động lại containerd: %s", output)
-        return False
-
-    success, output = run_command("sudo systemctl restart kubelet.service")
-    if not success:
-        logger.error("Lỗi khi khởi động lại kubelet: %s", output)
         return False
 
     logger.info("containerd cài đặt và cấu hình thành công!")
@@ -128,7 +123,7 @@ def install_kubeadm():
 
     # Thêm Kubernetes GPG key
     success, output = run_command(
-        "curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg"
+        "curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key |  gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg"
     )
     if not success:
         logger.error("Lỗi khi thêm Kubernetes GPG key: %s", output)
@@ -136,26 +131,26 @@ def install_kubeadm():
 
     # Thêm Kubernetes repository
     success, output = run_command(
-        "echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list"
+        "echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /' |  tee /etc/apt/sources.list.d/kubernetes.list"
     )
     if not success:
         logger.error("Lỗi khi thêm Kubernetes repository: %s", output)
         return False
 
     # Cài đặt kubeadm, kubelet, kubectl
-    success, output = run_command("sudo apt-get update && sudo apt-get install -y kubelet kubeadm kubectl")
+    success, output = run_command(" apt-get update &&  apt-get install -y kubelet kubeadm kubectl")
     if not success:
         logger.error("Lỗi khi cài kubeadm, kubelet, kubectl: %s", output)
         return False
 
     # Giữ phiên bản cố định
-    success, output = run_command("sudo apt-mark hold kubelet kubeadm kubectl")
+    success, output = run_command(" apt-mark hold kubelet kubeadm kubectl")
     if not success:
         logger.error("Lỗi khi hold packages: %s", output)
         return False
 
     # Enable và start kubelet
-    success, output = run_command("sudo systemctl enable --now kubelet")
+    success, output = run_command(" systemctl enable --now kubelet")
     if not success:
         logger.error("Lỗi khi enable/start kubelet: %s", output)
         return False
@@ -199,14 +194,14 @@ def init_kubernetes():
     os.environ["KUBECONFIG"] = os.path.expanduser("~/.kube/config")
 
     # Tải trước images
-    success, output = run_command("sudo kubeadm config images pull")
+    success, output = run_command(" kubeadm config images pull")
     if not success:
         logger.error("Lỗi khi tải images: %s", output)
         return False
 
     # Khởi tạo cluster
     success, output = run_command(
-        "sudo kubeadm init --pod-network-cidr=10.10.0.0/16 --cri-socket=unix:///var/run/containerd/containerd.sock --skip-phases=addon/kube-proxy"
+        " kubeadm init --pod-network-cidr=10.10.0.0/16 --cri-socket=unix:///var/run/containerd/containerd.sock --skip-phases=addon/kube-proxy"
     )
     if not success:
         logger.error("Lỗi khi khởi tạo cluster: %s", output)
@@ -214,7 +209,7 @@ def init_kubernetes():
 
     # Thiết lập kubeconfig
     success, output = run_command(
-        "mkdir -p $HOME/.kube && sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config && sudo chown $(id -u):$(id -g) $HOME/.kube/config"
+        "mkdir -p $HOME/.kube &&  cp -i /etc/kubernetes/admin.conf $HOME/.kube/config &&  chown $(id -u):$(id -g) $HOME/.kube/config"
     )
     if not success:
         logger.error("Lỗi khi thiết lập kubeconfig: %s", output)
