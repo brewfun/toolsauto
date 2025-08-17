@@ -3,6 +3,8 @@
  * Handles form submission, progress tracking, and real-time updates
  */
 
+(function() {
+
 // Global variables
 let currentInstallationId = null;
 let progressInterval = null;
@@ -13,38 +15,38 @@ const API_BASE = '/api/v1';
 
 // Initialize application
 document.addEventListener('DOMContentLoaded', function() {
-    initializeApp();
+    window.initializeApp();
 });
 
 function initializeApp() {
     console.log('Initializing K8s Auto Installer...');
     
     // Load initial data
-    loadStats();
-    loadInstallations();
+    window.loadStats();
+    window.loadInstallations();
     
     // Setup form handlers
-    setupFormHandlers();
+    window.setupFormHandlers();
     
     // Setup mode switching
-    setupModeSwitch();
+    window.setupModeSwitch();
     
     // Setup periodic refresh
-    setInterval(loadStats, 30000); // Refresh stats every 30 seconds
-    setInterval(loadInstallations, 15000); // Refresh installations every 15 seconds
+    setInterval(window.loadStats, 30000); // Refresh stats every 30 seconds
+    setInterval(window.loadInstallations, 15000); // Refresh installations every 15 seconds
 }
 
 function setupFormHandlers() {
     const form = document.getElementById('installation-form');
     if (form) {
-        form.addEventListener('submit', handleFormSubmit);
+        form.addEventListener('submit', window.handleFormSubmit);
     }
 }
 
 function setupModeSwitch() {
     const modeRadios = document.querySelectorAll('input[name="mode"]');
     modeRadios.forEach(radio => {
-        radio.addEventListener('change', handleModeChange);
+        radio.addEventListener('change', window.handleModeChange);
     });
 }
 
@@ -56,7 +58,7 @@ function handleModeChange(event) {
         haConfig.classList.remove('d-none');
         // Add default nodes for HA mode
         if (document.getElementById('nodes-config').children.length === 0) {
-            addDefaultHANodes();
+            window.addDefaultHANodes();
         }
     } else {
         haConfig.classList.add('d-none');
@@ -73,7 +75,7 @@ function addDefaultHANodes() {
     ];
     
     defaultNodes.forEach(node => {
-        addNodeConfig(node);
+        window.addNodeConfig(node);
     });
 }
 
@@ -87,7 +89,7 @@ function addNodeConfig(defaultValues = {}) {
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <h6 class="mb-0">Node ${nodeIndex + 1}</h6>
-                <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeNodeConfig(this)">
+                <button type="button" class="btn btn-outline-danger btn-sm" onclick="window.removeNodeConfig(this)">
                     <i class="bi bi-trash"></i>
                 </button>
             </div>
@@ -138,7 +140,7 @@ function removeNodeConfig(button) {
         inputs.forEach(input => {
             const name = input.getAttribute('name');
             if (name && name.includes('[')) {
-                const newName = name.replace(/\[\d+\]/, `[${index}]`);
+                const newName = name.replace(/[\[]\d+[\]]/, `[${index}]`);
                 input.setAttribute('name', newName);
             }
         });
@@ -170,7 +172,7 @@ async function handleFormSubmit(event) {
         
         Array.from(nodesContainer.children).forEach((card, index) => {
             const node = {
-                role: formData.get(`nodes[${index}][role]`),
+                role: formData.get(`nodes[${index}][role]`), 
                 host: formData.get(`nodes[${index}][host]`),
                 ssh_user: formData.get(`nodes[${index}][ssh_user]`),
                 ssh_key_path: formData.get(`nodes[${index}][ssh_key_path]`) || null
@@ -182,7 +184,7 @@ async function handleFormSubmit(event) {
         });
         
         if (config.nodes.length < 4) {
-            showAlert('HA mode requires at least 4 nodes (1 load balancer + 3 masters)', 'danger');
+            window.showAlert('HA mode requires at least 4 nodes (1 load balancer + 3 masters)', 'danger');
             return;
         }
     }
@@ -200,12 +202,12 @@ async function handleFormSubmit(event) {
         const validationResult = await validation.json();
         
         if (!validation.ok || !validationResult.valid) {
-            showAlert(`Configuration validation failed: ${validationResult.error}`, 'danger');
+            window.showAlert(`Configuration validation failed: ${validationResult.error}`, 'danger');
             return;
         }
         
     } catch (error) {
-        showAlert(`Validation error: ${error.message}`, 'danger');
+        window.showAlert(`Validation error: ${error.message}`, 'danger');
         return;
     }
     
@@ -223,14 +225,14 @@ async function handleFormSubmit(event) {
         
         if (response.ok) {
             currentInstallationId = result.installation_id;
-            showProgressModal();
-            startProgressTracking();
+            window.showProgressModal();
+            window.startProgressTracking();
         } else {
-            showAlert(`Installation failed to start: ${result.error}`, 'danger');
+            window.showAlert(`Installation failed to start: ${result.error}`, 'danger');
         }
         
     } catch (error) {
-        showAlert(`Error starting installation: ${error.message}`, 'danger');
+        window.showAlert(`Error starting installation: ${error.message}`, 'danger');
     }
 }
 
@@ -239,7 +241,7 @@ function showProgressModal() {
     modal.show();
     
     // Reset progress
-    updateProgressBar(0, 'Starting installation...');
+    window.updateProgressBar(0, 'Starting installation...');
     document.getElementById('installation-id').textContent = currentInstallationId;
     document.getElementById('current-step').textContent = '-';
     document.getElementById('installation-duration').textContent = '-';
@@ -263,12 +265,12 @@ function startProgressTracking() {
             const status = await response.json();
             
             if (response.ok) {
-                updateProgress(status);
+                window.updateProgress(status);
                 
                 // Check if installation completed
                 if (status.completed) {
                     clearInterval(progressInterval);
-                    handleInstallationComplete(status);
+                    window.handleInstallationComplete(status);
                 }
             } else {
                 console.error('Failed to fetch status:', status.error);
@@ -280,7 +282,7 @@ function startProgressTracking() {
     }, 2000); // Check every 2 seconds
     
     // Also load logs periodically
-    startLogTracking();
+    window.startLogTracking();
 }
 
 function startLogTracking() {
@@ -292,7 +294,7 @@ function startLogTracking() {
             const result = await response.json();
             
             if (response.ok) {
-                updateLogs(result.logs);
+                window.updateLogs(result.logs);
             }
             
         } catch (error) {
@@ -304,14 +306,14 @@ function startLogTracking() {
 function updateProgress(status) {
     // Update progress bar
     const percentage = Math.round(status.progress_percentage || 0);
-    updateProgressBar(percentage, `Step ${status.current_step || 0}/${status.total_steps || 0}`);
+    window.updateProgressBar(percentage, `Step ${status.current_step || 0}/${status.total_steps || 0}`);
     
     // Update details
     document.getElementById('current-step').textContent = `${status.current_step || 0}/${status.total_steps || 0}`;
     
     // Update duration
     if (status.duration) {
-        const duration = formatDuration(status.duration);
+        const duration = window.formatDuration(status.duration);
         document.getElementById('installation-duration').textContent = duration;
     }
     
@@ -393,14 +395,14 @@ function handleInstallationComplete(status) {
     document.getElementById('close-btn').classList.remove('d-none');
     
     // Update progress to 100%
-    updateProgressBar(100, 'Installation complete');
+    window.updateProgressBar(100, 'Installation complete');
     
     // Close progress modal and show result modal
     setTimeout(() => {
         const progressModal = bootstrap.Modal.getInstance(document.getElementById('progress-modal'));
         progressModal.hide();
         
-        showResultModal(status);
+        window.showResultModal(status);
     }, 2000);
 }
 
@@ -419,7 +421,7 @@ function showResultModal(status) {
         content.innerHTML = `
             <div class="alert alert-success">
                 <h5><i class="bi bi-check-circle"></i> Kubernetes cluster installed successfully!</h5>
-                <p>Your cluster is now ready for use. Installation took ${formatDuration(status.duration)}.</p>
+                <p>Your cluster is now ready for use. Installation took ${window.formatDuration(status.duration)}.</p>
             </div>
             
             <div class="row g-3">
@@ -428,7 +430,7 @@ function showResultModal(status) {
                     <ul class="list-unstyled">
                         <li><strong>Mode:</strong> ${status.mode}</li>
                         <li><strong>Installation ID:</strong> ${status.installation_id}</li>
-                        <li><strong>Duration:</strong> ${formatDuration(status.duration)}</li>
+                        <li><strong>Duration:</strong> ${window.formatDuration(status.duration)}</li>
                     </ul>
                 </div>
                 <div class="col-md-6">
@@ -453,7 +455,7 @@ function showResultModal(status) {
         `;
         
         downloadBtn.classList.remove('d-none');
-        downloadBtn.onclick = () => downloadKubeconfig(status.installation_id);
+        downloadBtn.onclick = () => window.downloadKubeconfig(status.installation_id);
         
     } else {
         // Failure
@@ -496,7 +498,7 @@ function showResultModal(status) {
     resultModal.show();
     
     // Refresh installations list
-    loadInstallations();
+    window.loadInstallations();
 }
 
 async function cancelInstallation() {
@@ -508,7 +510,7 @@ async function cancelInstallation() {
         });
         
         if (response.ok) {
-            showAlert('Installation cancelled', 'warning');
+            window.showAlert('Installation cancelled', 'warning');
             
             // Stop tracking
             if (progressInterval) {
@@ -522,15 +524,15 @@ async function cancelInstallation() {
             currentInstallationId = null;
             
             // Refresh installations list
-            loadInstallations();
+            window.loadInstallations();
             
         } else {
             const result = await response.json();
-            showAlert(`Failed to cancel installation: ${result.error}`, 'danger');
+            window.showAlert(`Failed to cancel installation: ${result.error}`, 'danger');
         }
         
     } catch (error) {
-        showAlert(`Error cancelling installation: ${error.message}`, 'danger');
+        window.showAlert(`Error cancelling installation: ${error.message}`, 'danger');
     }
 }
 
@@ -550,11 +552,11 @@ async function downloadKubeconfig(installationId) {
             document.body.removeChild(a);
         } else {
             const result = await response.json();
-            showAlert(`Failed to download kubeconfig: ${result.error}`, 'danger');
+            window.showAlert(`Failed to download kubeconfig: ${result.error}`, 'danger');
         }
         
     } catch (error) {
-        showAlert(`Error downloading kubeconfig: ${error.message}`, 'danger');
+        window.showAlert(`Error downloading kubeconfig: ${error.message}`, 'danger');
     }
 }
 
@@ -564,7 +566,7 @@ async function loadStats() {
         const stats = await response.json();
         
         if (response.ok) {
-            updateStats(stats);
+            window.updateStats(stats);
         }
         
     } catch (error) {
@@ -590,7 +592,7 @@ async function loadInstallations() {
         const result = await response.json();
         
         if (response.ok) {
-            updateInstallationsTable(result.installations || []);
+            window.updateInstallationsTable(result.installations || []);
         }
         
     } catch (error) {
@@ -614,10 +616,10 @@ function updateInstallationsTable(installations) {
     }
     
     tbody.innerHTML = installations.map(installation => {
-        const statusBadge = getStatusBadge(installation.status, installation.success);
-        const progressBar = getProgressBar(installation.progress_percentage || 0);
-        const duration = installation.duration ? formatDuration(installation.duration) : '-';
-        const actions = getActionButtons(installation);
+        const statusBadge = window.getStatusBadge(installation.status, installation.success);
+        const progressBar = window.getProgressBar(installation.progress_percentage || 0);
+        const duration = installation.duration ? window.formatDuration(installation.duration) : '-';
+        const actions = window.getActionButtons(installation);
         
         return `
             <tr>
@@ -676,7 +678,7 @@ function getStatusBadge(status, success) {
         status = 'failed';
     }
     
-    return `<span class="badge ${badgeClass}"><i class="${icon}"></i> ${status}</span>`;
+    return `<span class="badge ${badgeClass}"><i class=" ${icon}"></i> ${status}</span>`;
 }
 
 function getProgressBar(percentage) {
@@ -699,7 +701,7 @@ function getActionButtons(installation) {
     
     // View details button
     buttons.push(`
-        <button class="btn btn-outline-primary btn-sm" onclick="viewInstallationDetails('${installation.installation_id}')" title="View Details">
+        <button class="btn btn-outline-primary btn-sm" onclick="window.viewInstallationDetails('${installation.installation_id}')" title="View Details">
             <i class="bi bi-eye"></i>
         </button>
     `);
@@ -707,7 +709,7 @@ function getActionButtons(installation) {
     // Download kubeconfig if successful
     if (installation.success === true) {
         buttons.push(`
-            <button class="btn btn-outline-success btn-sm" onclick="downloadKubeconfig('${installation.installation_id}')" title="Download Kubeconfig">
+            <button class="btn btn-outline-success btn-sm" onclick="window.downloadKubeconfig('${installation.installation_id}')" title="Download Kubeconfig">
                 <i class="bi bi-download"></i>
             </button>
         `);
@@ -716,7 +718,7 @@ function getActionButtons(installation) {
     // Cancel if running
     if (!installation.completed) {
         buttons.push(`
-            <button class="btn btn-outline-warning btn-sm" onclick="cancelInstallationById('${installation.installation_id}')" title="Cancel">
+            <button class="btn btn-outline-warning btn-sm" onclick="window.cancelInstallationById('${installation.installation_id}')" title="Cancel">
                 <i class="bi bi-stop-circle"></i>
             </button>
         `);
@@ -724,7 +726,7 @@ function getActionButtons(installation) {
     
     // Delete button
     buttons.push(`
-        <button class="btn btn-outline-danger btn-sm" onclick="deleteInstallation('${installation.installation_id}')" title="Delete">
+        <button class="btn btn-outline-danger btn-sm" onclick="window.deleteInstallation('${installation.installation_id}')" title="Delete">
             <i class="bi bi-trash"></i>
         </button>
     `);
@@ -745,20 +747,20 @@ Installation ID: ${installation.installation_id}
 Mode: ${installation.mode}
 Status: ${installation.status}
 Progress: ${Math.round(installation.progress_percentage || 0)}%
-Duration: ${installation.duration ? formatDuration(installation.duration) : 'N/A'}
+Duration: ${installation.duration ? window.formatDuration(installation.duration) : 'N/A'}
 ${installation.error_message ? `Error: ${installation.error_message}` : ''}
             `;
             
-            alert(details);
+            window.alert(details);
         }
         
     } catch (error) {
-        showAlert(`Error loading installation details: ${error.message}`, 'danger');
+        window.showAlert(`Error loading installation details: ${error.message}`, 'danger');
     }
 }
 
 async function cancelInstallationById(installationId) {
-    if (!confirm('Are you sure you want to cancel this installation?')) {
+    if (!window.confirm('Are you sure you want to cancel this installation?')) {
         return;
     }
     
@@ -768,20 +770,34 @@ async function cancelInstallationById(installationId) {
         });
         
         if (response.ok) {
-            showAlert('Installation cancelled', 'warning');
-            loadInstallations();
+            window.showAlert('Installation cancelled', 'warning');
+            
+            // Stop tracking
+            if (progressInterval) {
+                clearInterval(progressInterval);
+            }
+            
+            // Hide progress modal
+            const progressModal = bootstrap.Modal.getInstance(document.getElementById('progress-modal'));
+            progressModal.hide();
+            
+            currentInstallationId = null;
+            
+            // Refresh installations list
+            window.loadInstallations();
+            
         } else {
             const result = await response.json();
-            showAlert(`Failed to cancel installation: ${result.error}`, 'danger');
+            window.showAlert(`Failed to cancel installation: ${result.error}`, 'danger');
         }
         
     } catch (error) {
-        showAlert(`Error cancelling installation: ${error.message}`, 'danger');
+        window.showAlert(`Error cancelling installation: ${error.message}`, 'danger');
     }
 }
 
 async function deleteInstallation(installationId) {
-    if (!confirm('Are you sure you want to delete this installation record?')) {
+    if (!window.confirm('Are you sure you want to delete this installation record?')) {
         return;
     }
     
@@ -791,16 +807,16 @@ async function deleteInstallation(installationId) {
         });
         
         if (response.ok) {
-            showAlert('Installation deleted', 'info');
-            loadInstallations();
-            loadStats();
+            window.showAlert('Installation deleted', 'info');
+            window.loadInstallations();
+            window.loadStats();
         } else {
             const result = await response.json();
-            showAlert(`Failed to delete installation: ${result.error}`, 'danger');
+            window.showAlert(`Failed to delete installation: ${result.error}`, 'danger');
         }
         
     } catch (error) {
-        showAlert(`Error deleting installation: ${error.message}`, 'danger');
+        window.showAlert(`Error deleting installation: ${error.message}`, 'danger');
     }
 }
 
@@ -810,11 +826,11 @@ function formatDuration(seconds) {
         return `${Math.round(seconds)}s`;
     } else if (seconds < 3600) {
         return `${Math.round(seconds / 60)}m ${Math.round(seconds % 60)}s`;
-    } else {
-        const hours = Math.floor(seconds / 3600);
-        const minutes = Math.round((seconds % 3600) / 60);
-        return `${hours}h ${minutes}m`;
     }
+    
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.round((seconds % 3600) / 60);
+    return `${hours}h ${minutes}m`;
 }
 
 function showAlert(message, type = 'info') {
@@ -839,11 +855,47 @@ function showAlert(message, type = 'info') {
 }
 
 function scrollToInstall() {
-    document.getElementById('install-section').scrollIntoView({ 
-        behavior: 'smooth' 
+    document.getElementById('install-section').scrollIntoView({
+        behavior: 'smooth'
     });
 }
 
 function clearLogs() {
     document.getElementById('log-content').textContent = '';
 }
+
+// Attach functions to window object for testability and global access
+window.initializeApp = initializeApp;
+window.setupFormHandlers = setupFormHandlers;
+window.setupModeSwitch = setupModeSwitch;
+window.handleModeChange = handleModeChange;
+window.addDefaultHANodes = addDefaultHANodes;
+window.addNodeConfig = addNodeConfig;
+window.removeNodeConfig = removeNodeConfig;
+window.handleFormSubmit = handleFormSubmit;
+window.showProgressModal = showProgressModal;
+window.startProgressTracking = startProgressTracking;
+window.startLogTracking = startLogTracking;
+window.updateProgress = updateProgress;
+window.updateProgressBar = updateProgressBar;
+window.updateLogs = updateLogs;
+window.handleInstallationComplete = handleInstallationComplete;
+window.showResultModal = showResultModal;
+window.cancelInstallation = cancelInstallation;
+window.downloadKubeconfig = downloadKubeconfig;
+window.loadStats = loadStats;
+window.updateStats = updateStats;
+window.loadInstallations = loadInstallations;
+window.updateInstallationsTable = updateInstallationsTable;
+window.getStatusBadge = getStatusBadge;
+window.getProgressBar = getProgressBar;
+window.getActionButtons = getActionButtons;
+window.viewInstallationDetails = viewInstallationDetails;
+window.cancelInstallationById = cancelInstallationById;
+window.deleteInstallation = deleteInstallation;
+window.formatDuration = formatDuration;
+window.showAlert = showAlert;
+window.scrollToInstall = scrollToInstall;
+window.clearLogs = clearLogs;
+
+})();
