@@ -4,7 +4,9 @@
  */
 
 // Mock fetch API
-global.fetch = jest.fn();
+
+const originalGetElementById = document.getElementById;
+const originalQuerySelectorAll = document.querySelectorAll;
 
 // Mock Bootstrap Modal
 global.bootstrap = {
@@ -17,21 +19,80 @@ bootstrap.Modal.getInstance = jest.fn().mockImplementation(() => ({
     hide: jest.fn(),
 }));
 
+let showAlertSpy;
+let mockForm;
+let mockRadio1;
+let mockRadio2;
+
 // Helper to reset DOM before each test
 beforeEach(() => {
+    // Mock fetch for validation
+    fetch.mockResponseOnce(JSON.stringify({ valid: true }), { status: 200 });
+    // Mock fetch for start
+    fetch.mockResponseOnce(JSON.stringify({ success: true, installation_id: 'test-id' }), { status: 202 });
+
+    // Create a mock form element with a spied addEventListener
+    mockForm = document.createElement('form');
+    jest.spyOn(mockForm, 'addEventListener');
+    mockForm.innerHTML = `
+        <input name="mode" value="all_in_one">
+        <input name="k8s_version" value="1.28.0">
+        <input name="cni_provider" value="cilium">
+        <input name="pod_cidr" value="10.244.0.0/16">
+        <input name="service_cidr" value="10.96.0.0/12">
+        <input name="enable_rbac" type="checkbox" checked>
+        <input name="enable_network_policies" type="checkbox" checked>
+        <input name="enable_monitoring" type="checkbox" checked>
+    `;
+
+    jest.spyOn(document, 'getElementById').mockImplementation((id) => {
+        if (id === 'installation-form') {
+            return mockForm;
+        }
+        if (id === 'ha-config') { // Mock ha-config for classList
+            return originalGetElementById.call(document, id);
+        }
+        // Handle other elements as needed, or fall back to original
+        return originalGetElementById.call(document, id);
+    });
+
+    // Create mock radio elements with spied addEventListener
+    mockRadio1 = document.createElement('input');
+    mockRadio1.name = 'mode';
+    mockRadio1.value = 'all_in_one';
+    mockRadio1.checked = true;
+    jest.spyOn(mockRadio1, 'addEventListener');
+
+    mockRadio2 = document.createElement('input');
+    mockRadio2.name = 'mode';
+    mockRadio2.value = 'ha_secure';
+    jest.spyOn(mockRadio2, 'addEventListener');
+
+    jest.spyOn(document, 'querySelectorAll').mockImplementation((selector) => {
+        if (selector === 'input[name="mode"]') {
+            return [mockRadio1, mockRadio2];
+        }
+        // Handle other selectors as needed, or fall back to original
+        return originalQuerySelectorAll.call(document, selector);
+    });
+
+    // Mock DOM elements for form data
     document.body.innerHTML = `
         <div class="container"></div>
-        <form id="installation-form"></form>
-        <input type="radio" name="mode" value="all_in_one" checked>
-        <input type="radio" name="mode" value="ha_secure">
         <div id="ha-config" class="d-none"></div>
         <div id="nodes-config"></div>
         <div id="progress-modal"></div>
-        <div id="result-modal"></div>
+        <div id="result-modal">
+            <div id="result-header"></div>
+            <div id="result-title"></div>
+            <div id="result-content"></div>
+            <button id="download-kubeconfig"></button>
+        </div>
         <div id="installation-id"></div>
         <div id="current-step"></div>
         <div id="installation-duration"></div>
         <div id="log-content"></div>
+        <div id="log-container"></div>
         <div id="cancel-btn"></div>
         <div id="close-btn"></div>
         <div id="progress-bar"></div>
@@ -41,7 +102,7 @@ beforeEach(() => {
         <div id="running-installations"></div>
         <div id="successful-installations"></div>
         <div id="failed-installations"></div>
-        <table id="installations-table-body"></table>
+        <table id="installations-table-body"><tbody></tbody></table>
         <button onclick="addNodeConfig()"></button>
         <button onclick="removeNodeConfig()"></button>
         <button onclick="cancelInstallation()"></button>
@@ -50,16 +111,23 @@ beforeEach(() => {
         <button onclick="cancelInstallationById()"></button>
         <button onclick="deleteInstallation()"></button>
     `;
-    jest.clearAllMocks();
     jest.useFakeTimers();
+    // Define a dummy showAlert before loading app.js
+    window.showAlert = () => {};
+    jest.spyOn(window, 'showAlert').mockImplementation(() => {});
+
+    // Mock initializeApp before app.js is loaded
+    jest.spyOn(window, 'initializeApp').mockImplementation(() => {});
 
     // Load app.js into the JSDOM environment
     require('./app.js');
+    document.dispatchEvent(new Event('DOMContentLoaded'));
 });
 
 afterEach(() => {
     jest.runOnlyPendingTimers();
     jest.useRealTimers();
+    jest.clearAllTimers(); // Clear all timers
 });
 
 describe('initializeApp', () => {
@@ -68,6 +136,7 @@ describe('initializeApp', () => {
         const loadInstallationsSpy = jest.spyOn(window, 'loadInstallations').mockImplementation(() => {});
         const setupFormHandlersSpy = jest.spyOn(window, 'setupFormHandlers').mockImplementation(() => {});
         const setupModeSwitchSpy = jest.spyOn(window, 'setupModeSwitch').mockImplementation(() => {});
+        const setIntervalSpy = jest.spyOn(window, 'setInterval');
 
         window.initializeApp();
 
@@ -77,32 +146,22 @@ describe('initializeApp', () => {
         expect(setupModeSwitchSpy).toHaveBeenCalled();
 
         // Check setInterval calls
-        expect(setInterval).toHaveBeenCalledTimes(2);
-        expect(setInterval).toHaveBeenCalledWith(loadStatsSpy, 30000);
-        expect(setInterval).toHaveBeenCalledWith(loadInstallationsSpy, 15000);
+        expect(setIntervalSpy).toHaveBeenCalledTimes(2);
+        expect(setIntervalSpy).toHaveBeenCalledWith(loadStatsSpy, 30000);
+        expect(setIntervalSpy).toHaveBeenCalledWith(loadInstallationsSpy, 15000);
     });
 });
 
 describe('setupFormHandlers', () => {
     test('should add submit event listener to form', () => {
-        const form = document.getElementById('installation-form');
-        const addEventListenerSpy = jest.spyOn(form, 'addEventListener');
-
-        window.setupFormHandlers();
-
-        expect(addEventListenerSpy).toHaveBeenCalledWith('submit', expect.any(Function));
+        expect(mockForm.addEventListener).toHaveBeenCalledWith('submit', expect.any(Function));
     });
 });
 
 describe('setupModeSwitch', () => {
     test('should add change event listeners to mode radios', () => {
-        const modeRadios = document.querySelectorAll('input[name="mode"]');
-        const addEventListenerSpy = jest.spyOn(modeRadios[0], 'addEventListener');
-
-        window.setupModeSwitch();
-
-        expect(addEventListenerSpy).toHaveBeenCalledWith('change', expect.any(Function));
-        expect(addEventListenerSpy).toHaveBeenCalledTimes(modeRadios.length);
+        expect(mockRadio1.addEventListener).toHaveBeenCalledWith('change', expect.any(Function));
+        expect(mockRadio2.addEventListener).toHaveBeenCalledWith('change', expect.any(Function));
     });
 });
 
@@ -134,10 +193,7 @@ describe('handleModeChange', () => {
 });
 
 describe('handleFormSubmit', () => {
-    let showAlertSpy;
-
     beforeEach(() => {
-        showAlertSpy = jest.spyOn(window, 'showAlert').mockImplementation(() => {});
         // Mock fetch for validation
         fetch.mockResponseOnce(JSON.stringify({ valid: true }), { status: 200 });
         // Mock fetch for start
@@ -154,6 +210,7 @@ describe('handleFormSubmit', () => {
             <input name="enable_network_policies" type="checkbox" checked>
             <input name="enable_monitoring" type="checkbox" checked>
         `;
+        showAlertSpy = jest.spyOn(window, 'showAlert');
     });
 
     test('should handle successful form submission', async () => {
@@ -281,16 +338,18 @@ describe('handleInstallationComplete', () => {
         const cancelBtn = document.getElementById('cancel-btn');
         const closeBtn = document.getElementById('close-btn');
         const showResultModalSpy = jest.spyOn(window, 'showResultModal').mockImplementation(() => {});
+        const setTimeoutSpy = jest.spyOn(window, 'setTimeout');
 
         cancelBtn.classList.remove('d-none'); // Ensure visible initially
         closeBtn.classList.add('d-none'); // Ensure hidden initially
 
         window.handleInstallationComplete({ success: true });
+        jest.advanceTimersByTime(2000);
 
         expect(cancelBtn.classList.contains('d-none')).toBe(true);
         expect(closeBtn.classList.contains('d-none')).toBe(false);
         expect(showResultModalSpy).toHaveBeenCalledWith({ success: true });
-        expect(setTimeout).toHaveBeenCalled();
+        expect(setTimeoutSpy).toHaveBeenCalled();
     });
 });
 
@@ -337,16 +396,15 @@ describe('showResultModal', () => {
 });
 
 describe('cancelInstallation', () => {
-    let showAlertSpy;
-
     beforeEach(() => {
-        showAlertSpy = jest.spyOn(window, 'showAlert').mockImplementation(() => {});
         window.currentInstallationId = 'test-id';
         window.progressInterval = setInterval(() => {}, 1000); // Simulate active interval
         fetch.mockResponseOnce(JSON.stringify({ success: true }), { status: 200 });
+        showAlertSpy = jest.spyOn(window, 'showAlert');
     });
 
     test('should cancel installation successfully', async () => {
+        const clearIntervalSpy = jest.spyOn(window, 'clearInterval');
         await window.cancelInstallation();
 
         expect(fetch).toHaveBeenCalledWith(
@@ -354,7 +412,7 @@ describe('cancelInstallation', () => {
             expect.objectContaining({ method: 'POST' })
         );
         expect(showAlertSpy).toHaveBeenCalledWith('Installation cancelled', 'warning');
-        expect(clearInterval).toHaveBeenCalledWith(window.progressInterval);
+        expect(clearIntervalSpy).toHaveBeenCalledWith(window.progressInterval);
         expect(window.currentInstallationId).toBeNull();
         expect(window.loadInstallations).toHaveBeenCalled();
     });
@@ -370,11 +428,9 @@ describe('cancelInstallation', () => {
 });
 
 describe('downloadKubeconfig', () => {
-    let showAlertSpy;
-
     beforeEach(() => {
-        showAlertSpy = jest.spyOn(window, 'showAlert').mockImplementation(() => {});
         fetch.mockResponseOnce(new Blob(['kubeconfig content']), { status: 200 });
+        showAlertSpy = jest.spyOn(window, 'showAlert');
     });
 
     test('should download kubeconfig successfully', async () => {
@@ -402,10 +458,7 @@ describe('downloadKubeconfig', () => {
 });
 
 describe('loadStats', () => {
-    let updateStatsSpy;
-
     beforeEach(() => {
-        updateStatsSpy = jest.spyOn(window, 'updateStats').mockImplementation(() => {});
         fetch.mockResponseOnce(JSON.stringify({ total_installations: 5 }), { status: 200 });
     });
 
@@ -450,10 +503,7 @@ describe('updateStats', () => {
 });
 
 describe('loadInstallations', () => {
-    let updateInstallationsTableSpy;
-
     beforeEach(() => {
-        updateInstallationsTableSpy = jest.spyOn(window, 'updateInstallationsTable').mockImplementation(() => {});
         fetch.mockResponseOnce(JSON.stringify({ installations: [{ id: '1' }] }), { status: 200 });
     });
 
@@ -543,16 +593,15 @@ describe('showAlert', () => {
 });
 
 describe('cancelInstallationById', () => {
-    let showAlertSpy;
-
     beforeEach(() => {
-        showAlertSpy = jest.spyOn(window, 'showAlert').mockImplementation(() => {});
         jest.spyOn(window, 'loadInstallations').mockImplementation(() => {});
         window.confirm = jest.fn(() => true); // Mock confirm to return true
         fetch.mockResponseOnce(JSON.stringify({ success: true }), { status: 200 });
+        showAlertSpy = jest.spyOn(window, 'showAlert');
     });
 
     test('should cancel installation by ID successfully', async () => {
+        const clearIntervalSpy = jest.spyOn(window, 'clearInterval');
         await window.cancelInstallationById('test-id');
 
         expect(window.confirm).toHaveBeenCalled();
@@ -561,7 +610,7 @@ describe('cancelInstallationById', () => {
             expect.objectContaining({ method: 'POST' })
         );
         expect(showAlertSpy).toHaveBeenCalledWith('Installation cancelled', 'warning');
-        expect(clearInterval).toHaveBeenCalledWith(window.progressInterval);
+        expect(clearIntervalSpy).toHaveBeenCalledWith(window.progressInterval);
         expect(window.currentInstallationId).toBeNull();
         expect(window.loadInstallations).toHaveBeenCalled();
     });
@@ -577,14 +626,12 @@ describe('cancelInstallationById', () => {
 });
 
 describe('deleteInstallation', () => {
-    let showAlertSpy;
-
     beforeEach(() => {
-        showAlertSpy = jest.spyOn(window, 'showAlert').mockImplementation(() => {});
         jest.spyOn(window, 'loadInstallations').mockImplementation(() => {});
         jest.spyOn(window, 'loadStats').mockImplementation(() => {});
         window.confirm = jest.fn(() => true); // Mock confirm to return true
         fetch.mockResponseOnce(JSON.stringify({ success: true }), { status: 200 });
+        showAlertSpy = jest.spyOn(window, 'showAlert');
     });
 
     test('should delete installation successfully', async () => {
@@ -611,10 +658,7 @@ describe('deleteInstallation', () => {
 });
 
 describe('viewInstallationDetails', () => {
-    let showAlertSpy;
-
     beforeEach(() => {
-        showAlertSpy = jest.spyOn(window, 'showAlert').mockImplementation(() => {});
         fetch.mockResponseOnce(JSON.stringify({
             installation_id: 'test-id',
             mode: 'all_in_one',
@@ -623,6 +667,7 @@ describe('viewInstallationDetails', () => {
             duration: 60,
             error_message: null
         }), { status: 200 });
+        showAlertSpy = jest.spyOn(window, 'showAlert');
     });
 
     test('should display installation details', async () => {
