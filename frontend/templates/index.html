@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K8s Auto Installer</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="/static/css/main.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-gear-fill"></i>
+                K8s Auto Installer
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/">
+                            <i class="bi bi-house"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#install-section">
+                            <i class="bi bi-plus-circle"></i> New Installation
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/docs">
+                            <i class="bi bi-book"></i> Documentation
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="hero-section bg-light py-5">
+        <div class="container text-center">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h1 class="display-4 fw-bold text-primary mb-3">
+                        <i class="bi bi-kubernetes"></i>
+                        Kubernetes Auto Installer
+                    </h1>
+                    <p class="lead mb-4">
+                        Deploy production-ready Kubernetes clusters with ease. 
+                        Choose from All-in-One development setups or High-Availability secure clusters.
+                    </p>
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                        <button class="btn btn-primary btn-lg px-4" onclick="scrollToInstall()">
+                            <i class="bi bi-rocket"></i> Start Installation
+                        </button>
+                        <button class="btn btn-outline-primary btn-lg px-4" onclick="loadInstallations()">
+                            <i class="bi bi-list"></i> View Installations
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features Section -->
+    <div class="container my-5">
+        <div class="row text-center mb-5">
+            <div class="col-12">
+                <h2 class="fw-bold mb-4">Installation Modes</h2>
+            </div>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body text-center">
+                        <div class="feature-icon bg-primary text-white rounded-circle mx-auto mb-3">
+                            <i class="bi bi-laptop"></i>
+                        </div>
+                        <h4 class="card-title">All-in-One</h4>
+                        <p class="card-text">
+                            Perfect for development and testing. Single-node Kubernetes cluster 
+                            with containerd runtime and your choice of CNI provider.
+                        </p>
+                        <ul class="list-unstyled text-start">
+                            <li><i class="bi bi-check-circle-fill text-success"></i> Quick setup (5-10 minutes)</li>
+                            <li><i class="bi bi-check-circle-fill text-success"></i> Minimal resource requirements</li>
+                            <li><i class="bi bi-check-circle-fill text-success"></i> Perfect for learning</li>
+                            <li><i class="bi bi-check-circle-fill text-success"></i> Localhost installation</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body text-center">
+                        <div class="feature-icon bg-success text-white rounded-circle mx-auto mb-3">
+                            <i class="bi bi-shield-check"></i>
+                        </div>
+                        <h4 class="card-title">HA Secure</h4>
+                        <p class="card-text">
+                            Production-ready high-availability cluster with load balancer, 
+                            multiple masters, and security best practices enabled.
+                        </p>
+                        <ul class="list-unstyled text-start">
+                            <li><i class="bi bi-check-circle-fill text-success"></i> High availability setup</li>
+                            <li><i class="bi bi-check-circle-fill text-success"></i> Load balancer included</li>
+                            <li><i class="bi bi-check-circle-fill text-success"></i> RBAC & network policies</li>
+                            <li><i class="bi bi-check-circle-fill text-success"></i> Multi-node deployment</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Dashboard -->
+    <div class="container my-5">
+        <div class="row">
+            <div class="col-12">
+                <h2 class="fw-bold mb-4">
+                    <i class="bi bi-activity"></i> Installation Dashboard
+                </h2>
+            </div>
+        </div>
+        
+        <!-- Stats Cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="card-title">Total Installations</h6>
+                                <h3 class="mb-0" id="total-installations">-</h3>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="bi bi-bar-chart fs-2"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="card-title">Running</h6>
+                                <h3 class="mb-0" id="running-installations">-</h3>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="bi bi-hourglass-split fs-2"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="card-title">Successful</h6>
+                                <h3 class="mb-0" id="successful-installations">-</h3>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="bi bi-check-circle fs-2"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-danger text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="card-title">Failed</h6>
+                                <h3 class="mb-0" id="failed-installations">-</h3>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="bi bi-x-circle fs-2"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Installations Table -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Recent Installations</h5>
+                <button class="btn btn-outline-primary btn-sm" onclick="loadInstallations()">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Mode</th>
+                                <th>Status</th>
+                                <th>Progress</th>
+                                <th>Duration</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="installations-table-body">
+                            <tr>
+                                <td colspan="6" class="text-center text-muted">
+                                    <i class="bi bi-hourglass-split"></i>
+                                    Loading installations...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Installation Form -->
+    <div class="container my-5" id="install-section">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="mb-0">
+                            <i class="bi bi-plus-circle"></i> 
+                            New Kubernetes Installation
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="installation-form">
+                            <!-- Installation Mode -->
+                            <div class="mb-4">
+                                <label class="form-label fw-bold">Installation Mode</label>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="mode" id="mode-all-in-one" value="all_in_one" checked>
+                                            <label class="form-check-label" for="mode-all-in-one">
+                                                <strong>All-in-One</strong>
+                                                <br><small class="text-muted">Single-node development cluster</small>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="mode" id="mode-ha-secure" value="ha_secure">
+                                            <label class="form-check-label" for="mode-ha-secure">
+                                                <strong>HA Secure</strong>
+                                                <br><small class="text-muted">High-availability production cluster</small>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Kubernetes Configuration -->
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-6">
+                                    <label for="k8s-version" class="form-label">Kubernetes Version</label>
+                                    <select class="form-select" id="k8s-version" name="k8s_version">
+                                        <option value="1.30">1.30 (Recommended)</option>
+                                        <option value="1.29">1.29</option>
+                                        <option value="1.28">1.28</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="cni-provider" class="form-label">CNI Provider</label>
+                                    <select class="form-select" id="cni-provider" name="cni_provider">
+                                        <option value="cilium">Cilium (Recommended)</option>
+                                        <option value="calico">Calico</option>
+                                        <option value="flannel">Flannel</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Network Configuration -->
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-6">
+                                    <label for="pod-cidr" class="form-label">Pod CIDR</label>
+                                    <input type="text" class="form-control" id="pod-cidr" name="pod_cidr" value="10.10.0.0/16">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="service-cidr" class="form-label">Service CIDR</label>
+                                    <input type="text" class="form-control" id="service-cidr" name="service_cidr" value="10.96.0.0/12">
+                                </div>
+                            </div>
+
+                            <!-- HA Configuration (hidden by default) -->
+                            <div id="ha-config" class="d-none mb-4">
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle"></i>
+                                    HA Secure mode requires at least 3 master nodes and 1 load balancer. 
+                                    SSH access to all nodes is required.
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Nodes Configuration</label>
+                                    <div id="nodes-config">
+                                        <!-- Dynamic node configuration will be added here -->
+                                    </div>
+                                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="addNodeConfig()">
+                                        <i class="bi bi-plus"></i> Add Node
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Advanced Options -->
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <button class="btn btn-link p-0 text-decoration-none" type="button" data-bs-toggle="collapse" data-bs-target="#advanced-options">
+                                        <i class="bi bi-gear"></i> Advanced Options
+                                    </button>
+                                </div>
+                                <div class="collapse" id="advanced-options">
+                                    <div class="card-body">
+                                        <div class="row g-3">
+                                            <div class="col-md-4">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="enable-rbac" name="enable_rbac" checked>
+                                                    <label class="form-check-label" for="enable-rbac">
+                                                        Enable RBAC
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="enable-network-policies" name="enable_network_policies" checked>
+                                                    <label class="form-check-label" for="enable-network-policies">
+                                                        Network Policies
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="enable-monitoring" name="enable_monitoring">
+                                                    <label class="form-check-label" for="enable-monitoring">
+                                                        Enable Monitoring
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
+                                    <i class="bi bi-rocket"></i>
+                                    Start Installation
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Installation Progress Modal -->
+    <div class="modal fade" id="progress-modal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-hourglass-split"></i>
+                        Installation in Progress
+                    </h5>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span id="progress-text">Initializing...</span>
+                            <span id="progress-percentage">0%</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" id="progress-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4">
+                            <small class="text-muted">Installation ID:</small>
+                            <div id="installation-id">-</div>
+                        </div>
+                        <div class="col-md-4">
+                            <small class="text-muted">Current Step:</small>
+                            <div id="current-step">-</div>
+                        </div>
+                        <div class="col-md-4">
+                            <small class="text-muted">Duration:</small>
+                            <div id="installation-duration">-</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Real-time Logs -->
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between">
+                            <h6 class="mb-0">Installation Logs</h6>
+                            <button class="btn btn-outline-primary btn-sm" onclick="clearLogs()">
+                                <i class="bi bi-trash"></i> Clear
+                            </button>
+                        </div>
+                        <div class="card-body p-0">
+                            <div id="log-container" style="height: 300px; overflow-y: auto; background: #f8f9fa;">
+                                <pre id="log-content" class="m-2"></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" onclick="cancelInstallation()" id="cancel-btn">
+                        <i class="bi bi-stop-circle"></i>
+                        Cancel Installation
+                    </button>
+                    <button type="button" class="btn btn-secondary d-none" data-bs-dismiss="modal" id="close-btn">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Installation Result Modal -->
+    <div class="modal fade" id="result-modal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header" id="result-header">
+                    <h5 class="modal-title" id="result-title">
+                        Installation Complete
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="result-content">
+                        <!-- Dynamic content based on success/failure -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary d-none" id="download-kubeconfig">
+                        <i class="bi bi-download"></i>
+                        Download Kubeconfig
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

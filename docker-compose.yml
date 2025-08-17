@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: thanhtha/auto-tools-backend
+    container_name: k8s-auto-installer-backend
+    expose:
+      - "5000" # Expose port to other services, but not to host directly
+    volumes:
+      - .:/app  # Mount the current directory into the container for development
+    environment:
+      FLASK_ENV: development # Set to production for deployment
+      FLASK_DEBUG: 1 # Set to 0 for production
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    image: thanhtha/auto-tools-frontend
+    container_name: k8s-auto-installer-frontend
+    ports:
+      - "80:80" # Map container port 80 to host port 80
+    depends_on:
+      - backend # Ensure backend starts before frontend
