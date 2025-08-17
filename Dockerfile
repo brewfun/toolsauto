@@ -8,7 +8,7 @@ WORKDIR /app
 ENV PYTHONPATH=/app
 
 # Copy the backend requirements file and install dependencies
-COPY ./backend/requirments/base.txt .
+COPY ./backend/requirements/base.txt .
 RUN pip install --no-cache-dir -r base.txt
 
 # Copy the entire application code
